@@ -15,25 +15,29 @@ export async function POST(request: NextRequest) {
                 )?.email_address
                 if (email == null) {
                     return new Response("No primary email found", { status: 400 })
-                  }
+                }
 
-                  await upsertUser({
-                    id:clerkData.id,
-                    email:email,
-                    name:`${clerkData.first_name} ${clerkData.last_name}`,
-                    imageUrl:clerkData.image_url|| "",
-                    createdAt:new Date(clerkData.created_at),
-                    updatedAt:new Date(clerkData.updated_at)
-                  })
+                console.log("Syncing user:", clerkData.id)                  
 
-                break
+                await upsertUser({
+                    id: clerkData.id,
+                    email: email,
+                    name: `${clerkData.first_name} ${clerkData.last_name}`,
+                    imageUrl: clerkData.image_url || "",
+                    createdAt: new Date(clerkData.created_at),
+                    updatedAt: new Date(clerkData.updated_at)
+                })
+                return new Response("User synced successfully", { status: 200 })
+
+                break;
             case "user.deleted":
-                if(event.data.id==null){
-                    return new Response("No user ID found",{status:400})
+                if (event.data.id == null) {
+                    return new Response("No user ID found", { status: 400 })
                 }
 
                 await deleteUser(event.data.id)
-                break
+                return new Response("User deleted successfully", { status: 200 })
+                break;
         }
     } catch (error) {
         return new Response("Invalid webhook", { status: 400 })

@@ -4,6 +4,7 @@ import { relations } from "drizzle-orm/relations";
 import { JobInfoTable } from "./jobInfo";
 
 
+
 export const UserTable = pgTable("users",{
     id:varchar().primaryKey(),
     email:varchar().notNull().unique(),
