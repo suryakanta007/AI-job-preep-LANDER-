@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { ThemeProvider } from "next-themes";
 import { ClerkProvider } from "@/services/clerk/ClearkProvider";
+import { Toaster } from "@/components/ui/sonner";
 
 const outfitSans = Outfit({
   variable: "--font-outfit-sans",
@@ -35,6 +36,7 @@ export default function RootLayout({
           disableTransitionOnChange
           >
           {children}
+          <Toaster/>
           </ThemeProvider>
           
         </body>
