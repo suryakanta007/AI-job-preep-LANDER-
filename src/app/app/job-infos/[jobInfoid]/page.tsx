@@ -51,6 +51,7 @@ export default async function JobInfoPage({
   params: Promise<{ jobInfoId: string }>
 }) {
   const { jobInfoId } = await params
+  console.log("Rendering JobInfoPage for jobInfoId:", jobInfoId)
 
   const jobInfo = getCurrentUser().then(
     async ({ userId, redirectToSignIn }) => {
