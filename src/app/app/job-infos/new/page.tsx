@@ -1,6 +1,6 @@
 import { BackLink } from "@/components/BackLink"
 import { Card, CardContent } from "@/components/ui/card"
-import { JobInfoForm } from "@/fratures/jobinfos/components/jobinfoForm"
+import { JobInfoForm } from "@/fratures/jobInfos/components/JobinfoForm"
 
 export default function JobInfoNewPage() {
   return (
