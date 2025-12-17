@@ -31,6 +31,7 @@ export function NewQuestionClientPage({
 }) {
   const [status, setStatus] = useState<Status>("init")
   const [answer, setAnswer] = useState<string | null>(null)
+  const [questionId, setQuestionId] = useState<string | null>(null)
 
   const {
     complete: generateQuestion,
@@ -40,7 +41,18 @@ export function NewQuestionClientPage({
     data,
   } = useCompletion({
     api: "/api/ai/questions/generate-question",
-    onFinish: () => {
+    onFinish: async () => {
+      // Workaround: Fetch the saved question from DB since streaming isn't updating UI
+      try {
+        const response = await fetch(`/api/job-infos/${jobInfo.id}/questions/latest`)
+        if (response.ok) {
+          const latestQuestion = await response.json()
+          setQuestion(latestQuestion.text)
+          setQuestionId(latestQuestion.id) // Update questionId so Answer button becomes enabled
+        }
+      } catch (error) {
+        console.error("Failed to fetch latest question:", error)
+      }
       setStatus("awaiting-answer")
     },
     onError: error => {
@@ -48,29 +60,37 @@ export function NewQuestionClientPage({
     },
   })
 
-  const {
-    complete: generateFeedback,
-    completion: feedback,
-    setCompletion: setFeedback,
-    isLoading: isGeneratingFeedback,
-  } = useCompletion({
-    api: "/api/ai/questions/generate-feedback",
-    onFinish: () => {
+  const [feedback, setFeedback] = useState<string | null>(null)
+  const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false)
+
+  const generateFeedback = async (answer: string, options: { body: { questionId: string } }) => {
+    setIsGeneratingFeedback(true)
+    setFeedback(null)
+    try {
+      const response = await fetch("/api/ai/questions/generate-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: answer,
+          questionId: options.body.questionId,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to generate feedback")
+      }
+
+      const data = await response.json()
+      console.log("Feedback API response:", data)
+      console.log("Setting feedback to:", data.feedback)
+      setFeedback(data.feedback)
       setStatus("awaiting-difficulty")
-    },
-    onError: error => {
-      errorToast(error.message)
-    },
-  })
-
-  const questionId = useMemo(() => {
-    const item = data?.at(-1)
-    if (item == null) return null
-    const parsed = z.object({ questionId: z.string() }).safeParse(item)
-    if (!parsed.success) return null
-
-    return parsed.data.questionId
-  }, [data])
+    } catch (error) {
+      errorToast(error instanceof Error ? error.message : "Failed to generate feedback")
+    } finally {
+      setIsGeneratingFeedback(false)
+    }
+  }
 
   return (
     <div className="flex flex-col items-center gap-4 w-full mx-w-[2000px] mx-auto flex-grow h-screen-header">
@@ -86,6 +106,7 @@ export function NewQuestionClientPage({
             setQuestion("")
             setFeedback("")
             setAnswer(null)
+            setQuestionId(null)
           }}
           disableAnswerButton={
             answer == null || answer.trim() === "" || questionId == null
@@ -102,6 +123,7 @@ export function NewQuestionClientPage({
             setQuestion("")
             setFeedback("")
             setAnswer(null)
+            setQuestionId(null)
             generateQuestion(difficulty, { body: { jobInfoId: jobInfo.id } })
           }}
         />
