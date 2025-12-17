@@ -18,9 +18,7 @@ import {
 } from "@/drizzle/schema"
 import { formatQuestionDifficulty } from "@/fratures/questions/formatters"
 import { useMemo, useState } from "react"
-import { useCompletion } from "@ai-sdk/react"
 import { errorToast } from "@/lib/errorToast"
-import z from "zod"
 
 type Status = "awaiting-answer" | "awaiting-difficulty" | "init"
 
@@ -33,32 +31,47 @@ export function NewQuestionClientPage({
   const [answer, setAnswer] = useState<string | null>(null)
   const [questionId, setQuestionId] = useState<string | null>(null)
 
-  const {
-    complete: generateQuestion,
-    completion: question,
-    setCompletion: setQuestion,
-    isLoading: isGeneratingQuestion,
-    data,
-  } = useCompletion({
-    api: "/api/ai/questions/generate-question",
-    onFinish: async () => {
-      // Workaround: Fetch the saved question from DB since streaming isn't updating UI
-      try {
-        const response = await fetch(`/api/job-infos/${jobInfo.id}/questions/latest`)
-        if (response.ok) {
-          const latestQuestion = await response.json()
-          setQuestion(latestQuestion.text)
-          setQuestionId(latestQuestion.id) // Update questionId so Answer button becomes enabled
-        }
-      } catch (error) {
-        console.error("Failed to fetch latest question:", error)
+  const [question, setQuestion] = useState<string | null>(null)
+  const [isGeneratingQuestion, setIsGeneratingQuestion] = useState(false)
+
+  const generateQuestion = async (difficulty: string, options: { body: { jobInfoId: string } }) => {
+    setIsGeneratingQuestion(true)
+    setQuestion(null)
+    setQuestionId(null)
+
+    try {
+      // Start question generation
+      const response = await fetch("/api/ai/questions/generate-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: difficulty,
+          jobInfoId: options.body.jobInfoId,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to generate question")
       }
+
+      // Wait for stream to complete (consume the response)
+      await response.text()
+
+      // Fetch the saved question from database
+      const latestResponse = await fetch(`/api/job-infos/${jobInfo.id}/questions/latest`)
+      if (latestResponse.ok) {
+        const latestQuestion = await latestResponse.json()
+        setQuestion(latestQuestion.text)
+        setQuestionId(latestQuestion.id)
+      }
+
       setStatus("awaiting-answer")
-    },
-    onError: error => {
-      errorToast(error.message)
-    },
-  })
+    } catch (error) {
+      errorToast(error instanceof Error ? error.message : "Failed to generate question")
+    } finally {
+      setIsGeneratingQuestion(false)
+    }
+  }
 
   const [feedback, setFeedback] = useState<string | null>(null)
   const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false)

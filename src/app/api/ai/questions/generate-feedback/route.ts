@@ -35,16 +35,26 @@ export async function POST(req: Request) {
         })
     }
 
-    const res = generateAiQuestionFeedback({
-        question: question.text,
-        answer,
-    })
+    try {
+        const res = generateAiQuestionFeedback({
+            question: question.text,
+            answer,
+        })
 
-    // Wait for the full feedback to be generated
-    const feedback = await res.text
+        console.log("Feedback AI result:", res)
+        console.log("Text property:", res.text)
 
-    // Return complete feedback as JSON instead of streaming
-    return Response.json({ feedback })
+        // Wait for the full feedback to be generated
+        const feedback = await res.text
+
+        console.log("Generated feedback:", feedback)
+
+        // Return complete feedback as JSON instead of streaming
+        return Response.json({ feedback })
+    } catch (error) {
+        console.error("Feedback generation error:", error)
+        return new Response(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 })
+    }
 }
 
 async function getQuestion(id: string, userId: string) {
